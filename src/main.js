@@ -230,7 +230,7 @@ function findGroundY(x, z) {
 
     const intersects = raycaster.intersectObject(mapVisual, true);
     if (intersects.length > 0) {
-        return intersects[0].point.y + 0.5;
+        return intersects[0].point.y;
     }
     return 2;
 }
@@ -241,8 +241,8 @@ function respawnCar() {
     // User requested spawn coordinates (X, Z)
     const spawnX = 0.2;
     const spawnZ = 0.47;
-    // Automatically find the correct ground Y at this spot
-    const spawnY = findGroundY(spawnX, spawnZ) + 0.5;
+    // Automatically find the correct ground Y at this spot and add a safety margin
+    const spawnY = findGroundY(spawnX, spawnZ) + 1.5;
 
     carPhysicsBody.position.set(spawnX, spawnY, spawnZ);
     carPhysicsBody.velocity.set(0, 0, 0);
