@@ -12,6 +12,7 @@ import {
     makeMapBody,
     syncMeshToBody,
     GROUPS,
+    CannonDebugger,
 } from './components/physics.js';
 
 // ------------------------------ CAMERA --------------------------------------------------------
@@ -109,6 +110,7 @@ var useOrbitControls = true;
 // ------------------------------ PHYSICS ------------------------------------------------------
 var physicsWorld;
 var carPhysicsBody;
+var physicsDebugger;
 
 var lampPhysicsBodies = [];
 
@@ -205,6 +207,8 @@ function initPhysics() {
     vehicle.addWheel(wheelOptions);
 
     vehicle.addToWorld(physicsWorld);
+
+    physicsDebugger = new CannonDebugger(scene, physicsWorld);
 }
 
 // --------------------- makeMapBody --------------------------------------------------------
@@ -578,6 +582,8 @@ function animate() {
     timer.update();
     const delta = timer.getDelta();
     physicsWorld.step(1 / 60, delta, 2);
+
+    if (physicsDebugger) physicsDebugger.update();
 
     // Update visuals
     car.position.copy(carPhysicsBody.position);
