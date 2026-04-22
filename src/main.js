@@ -160,7 +160,7 @@ function initPhysics() {
     chassisMaterial.friction = 0.0;
     chassisMaterial.restitution = 0.0;
 
-    carPhysicsBody = new CANNON.Body({ 
+    carPhysicsBody = new CANNON.Body({
         mass: CHASSIS_MASS,
         material: chassisMaterial,
         collisionFilterGroup: GROUPS.CAR,
@@ -185,7 +185,7 @@ function initPhysics() {
         radius: WHEEL_RADIUS,
         directionLocal: new CANNON.Vec3(0, -1, 0),
         suspensionStiffness: 40,
-        suspensionRestLength: 0.3,
+        suspensionRestLength: 1.0,
         frictionSlip: 1.4,
         dampingRelaxation: 2.3,
         dampingCompression: 4.4,
@@ -196,21 +196,21 @@ function initPhysics() {
         isFrontWheel: true,
     };
 
-    // Add 4 wheels - Move connection points down slightly
-    const downOffset = -0.3;
+    // Add 4 wheels - Move connection points UP to prevent raycast from starting under ground
+    const upOffset = 0.4;
     // Front Right
-    wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, 0.6);
+    wheelOptions.chassisConnectionPointLocal.set(1.0, upOffset, 0.6);
     vehicle.addWheel(wheelOptions);
     // Front Left
-    wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, -0.6);
+    wheelOptions.chassisConnectionPointLocal.set(1.0, upOffset, -0.6);
     vehicle.addWheel(wheelOptions);
     // Rear Right
     wheelOptions.isFrontWheel = false;
-    wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, 0.6);
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, upOffset, 0.6);
     vehicle.addWheel(wheelOptions);
     // Rear Left
     wheelOptions.isFrontWheel = false;
-    wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, -0.6);
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, upOffset, -0.6);
     vehicle.addWheel(wheelOptions);
 
     vehicle.addToWorld(physicsWorld);
@@ -248,8 +248,9 @@ function respawnCar() {
     if (!car || !carPhysicsBody) return;
 
     // User requested spawn coordinates (X, Z)
-    const spawnX = 4.5;
-    const spawnZ = 4.47;
+    const spawnX = 18;
+    const spawnZ = 1.6;
+
     // Automatically find the correct ground Y at this spot and add a safety margin
     const spawnY = findGroundY(spawnX, spawnZ) + 1.5;
 
