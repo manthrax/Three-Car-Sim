@@ -80,14 +80,15 @@ export function makeMapBody(physicsWorld, visualMesh) {
     return body;
 }
 
+let SYNC_TRANSFORM_AUX;
 // Helpers for syncing
 export function syncMeshToBody(body, mesh, visualOffset = { x: 0, y: 0, z: 0 }) {
     const ms = body.getMotionState();
     if (ms) {
-        const TRANSFORM_AUX = new Ammo.btTransform();
-        ms.getWorldTransform(TRANSFORM_AUX);
-        const p = TRANSFORM_AUX.getOrigin();
-        const q = TRANSFORM_AUX.getRotation();
+        if (!SYNC_TRANSFORM_AUX) SYNC_TRANSFORM_AUX = new Ammo.btTransform();
+        ms.getWorldTransform(SYNC_TRANSFORM_AUX);
+        const p = SYNC_TRANSFORM_AUX.getOrigin();
+        const q = SYNC_TRANSFORM_AUX.getRotation();
         
         mesh.position.set(p.x(), p.y(), p.z());
         mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());

@@ -253,9 +253,10 @@ function updateCameraFollow() {
     camera.lookAt(car.position.x, car.position.y + 0.5, car.position.z);
 }
 
-const TRANSFORM_AUX = new Ammo.btTransform();
+var TRANSFORM_AUX;
 
 function animate() {
+    if (!TRANSFORM_AUX) TRANSFORM_AUX = new Ammo.btTransform();
     const dt = 1 / 60;
     
     currentEngineForce = 0;
