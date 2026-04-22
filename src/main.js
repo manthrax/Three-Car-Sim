@@ -58,7 +58,7 @@ const SHADOWS_DATA = { mapSize: 2048, near: 0.5, far: 500 };
 var scene;
 var orbitControls;
 var keys = {};
-var useOrbitControls = true;
+var useOrbitControls = false;
 
 // ------------------------------ PHYSICS ------------------------------------------------------
 var physicsWorld;
