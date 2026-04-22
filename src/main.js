@@ -204,7 +204,7 @@ function initPhysics() {
     wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, -0.6);
     vehicle.addWheel(wheelOptions);
 
-    vehicle.addToWorld(physicsWorld);ld);
+    vehicle.addToWorld(physicsWorld);
 }
 
 // --------------------- makeMapBody --------------------------------------------------------
