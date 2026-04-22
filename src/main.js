@@ -182,15 +182,20 @@ function drawCar(scene, manager) {
     loader.load('models/car.glb', (gltf) => {
         const carModel = gltf.scene;
         carModel.scale.set(0.01, 0.01, 0.01);
-        carModel.rotation.y = Math.PI; // Match forward direction
+        carModel.rotation.y = -Math.PI / 2; // Match forward direction in Ammo (Z forward)
         carModel.traverse((node) => { if (node.isMesh) node.castShadow = true; });
         optimizeMaterials(carModel);
         car.add(carModel);
     });
 
+    const rotationFix = new THREE.Quaternion();
+    rotationFix.setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+
     loader.load('models/wheel.glb', (gltf) => {
         const wheelTemplate = gltf.scene.children[0];
         wheelTemplate.scale.set(0.01, 0.01, 0.01);
+        wheelTemplate.rotation.x = Math.PI;
+        wheelTemplate.quaternion.multiply(rotationFix);
         
         for (let i = 0; i < 4; i++) {
             const pivot = new THREE.Group();
