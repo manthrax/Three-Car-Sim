@@ -113,6 +113,7 @@ var carPhysicsBody;
 var physicsDebugger;
 
 var lampPhysicsBodies = [];
+var raycastLines = [];
 
 // ------------------------------ PHYSICS BOXES ----------------------------------------------
 const CAR_BOX_HX = 1.75;
@@ -216,6 +217,15 @@ function initPhysics() {
     vehicle.addToWorld(physicsWorld);
 
     physicsDebugger = new CannonDebugger(scene, physicsWorld);
+
+    // Init Raycast Visuals
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    for (let i = 0; i < 4; i++) {
+        const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -1, 0)]);
+        const line = new THREE.Line(geo, lineMat);
+        scene.add(line);
+        raycastLines.push(line);
+    }
 }
 
 // --------------------- makeMapBody --------------------------------------------------------
@@ -249,7 +259,7 @@ function respawnCar() {
 
     // User requested spawn coordinates (X, Z)
     const spawnX = 18;
-    const spawnZ = 1.6;
+    const spawnZ = 4.6;
 
     // Automatically find the correct ground Y at this spot and add a safety margin
     const spawnY = findGroundY(spawnX, spawnZ) + 1.5;
@@ -296,12 +306,12 @@ async function spawnMap(scene, manager) {
             mapBody = makeMapBody(physicsWorld, mapScene);
 
 
+            // ... after visual map is loaded, we can respawn the car correctly
+            respawnCar();
             resolve();
         });
     });
 
-    // ... after visual map is loaded, we can respawn the car correctly
-    respawnCar();
 
     // 2. Collision proxy — same transform as the visual map, never added to scene
     /*await new Promise((resolve) => {
@@ -531,6 +541,28 @@ function updateWheelSpin() {
     }
 }
 
+function updateRaycastDebugger() {
+    if (!vehicle || raycastLines.length === 0) return;
+    
+    for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+        const wheel = vehicle.wheelInfos[i];
+        const line = raycastLines[i];
+        
+        // Origin in world space
+        const origin = wheel.worldTransform.position;
+        // Direction is always down in this setup, let's just find the hit point or max length
+        const rayLength = wheel.suspensionRestLength + wheel.radius;
+        const hitPoint = wheel.raycastResult.hitPointWorld;
+        
+        const start = new THREE.Vector3(origin.x, origin.y, origin.z);
+        const end = wheel.raycastResult.hasHit 
+            ? new THREE.Vector3(hitPoint.x, hitPoint.y, hitPoint.z)
+            : new THREE.Vector3(origin.x, origin.y - rayLength, origin.z);
+
+        line.geometry.setFromPoints([start, end]);
+    }
+}
+
 // ------------------------ CAMERA FOLLOW ANGLE --------------------------------------------------------
 function updateCameraFollow() {
     const offset = new THREE.Vector3(CAM_OFFSET.x, CAM_OFFSET.y, CAM_OFFSET.z);
@@ -591,9 +623,10 @@ function animate() {
 
     timer.update();
     const delta = timer.getDelta();
-    physicsWorld.step(1 / 60, delta, 2);
+    physicsWorld.step(1 / 60, delta, 3);
 
     if (physicsDebugger) physicsDebugger.update();
+    updateRaycastDebugger();
 
     // Update visuals
     car.position.copy(carPhysicsBody.position);
