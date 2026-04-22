@@ -46,10 +46,11 @@ export function createRigidBody(mesh, shape, mass, pos, quat) {
 
 export function makeMapBody(physicsWorld, visualMesh) {
     const ammoMesh = new Ammo.btTriangleMesh();
-    const scale = visualMesh.scale;
-    const offset = visualMesh.position;
-
     visualMesh.updateMatrixWorld(true);
+
+    const v1 = new Ammo.btVector3();
+    const v2 = new Ammo.btVector3();
+    const v3 = new Ammo.btVector3();
 
     visualMesh.traverse((node) => {
         if (node.isMesh && node.geometry) {
@@ -64,19 +65,14 @@ export function makeMapBody(physicsWorld, visualMesh) {
 
             if (indices) {
                 for (let i = 0; i < indices.length; i += 3) {
-                    const i1 = indices[i] * 3;
-                    const i2 = indices[i + 1] * 3;
-                    const i3 = indices[i + 2] * 3;
+                    tempV1.set(vertices[indices[i] * 3], vertices[indices[i] * 3 + 1], vertices[indices[i] * 3 + 2]).applyMatrix4(worldMatrix);
+                    tempV2.set(vertices[indices[i + 1] * 3], vertices[indices[i + 1] * 3 + 1], vertices[indices[i + 1] * 3 + 2]).applyMatrix4(worldMatrix);
+                    tempV3.set(vertices[indices[i + 2] * 3], vertices[indices[i + 2] * 3 + 1], vertices[indices[i + 2] * 3 + 2]).applyMatrix4(worldMatrix);
 
-                    tempV1.set(vertices[i1], vertices[i1 + 1], vertices[i1 + 2]).applyMatrix4(worldMatrix);
-                    tempV2.set(vertices[i2], vertices[i2 + 1], vertices[i2 + 2]).applyMatrix4(worldMatrix);
-                    tempV3.set(vertices[i3], vertices[i3 + 1], vertices[i3 + 2]).applyMatrix4(worldMatrix);
-
-                    const v1 = new Ammo.btVector3(tempV1.x, tempV1.y, tempV1.z);
-                    const v2 = new Ammo.btVector3(tempV2.x, tempV2.y, tempV2.z);
-                    const v3 = new Ammo.btVector3(tempV3.x, tempV3.y, tempV3.z);
+                    v1.setValue(tempV1.x, tempV1.y, tempV1.z);
+                    v2.setValue(tempV2.x, tempV2.y, tempV2.z);
+                    v3.setValue(tempV3.x, tempV3.y, tempV3.z);
                     ammoMesh.addTriangle(v1, v2, v3, true);
-                    Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
                 }
             } else {
                 for (let i = 0; i < vertices.length; i += 9) {
@@ -84,15 +80,17 @@ export function makeMapBody(physicsWorld, visualMesh) {
                     tempV2.set(vertices[i + 3], vertices[i + 4], vertices[i + 5]).applyMatrix4(worldMatrix);
                     tempV3.set(vertices[i + 6], vertices[i + 7], vertices[i + 8]).applyMatrix4(worldMatrix);
 
-                    const v1 = new Ammo.btVector3(tempV1.x, tempV1.y, tempV1.z);
-                    const v2 = new Ammo.btVector3(tempV2.x, tempV2.y, tempV2.z);
-                    const v3 = new Ammo.btVector3(tempV3.x, tempV3.y, tempV3.z);
+                    v1.setValue(tempV1.x, tempV1.y, tempV1.z);
+                    v2.setValue(tempV2.x, tempV2.y, tempV2.z);
+                    v3.setValue(tempV3.x, tempV3.y, tempV3.z);
                     ammoMesh.addTriangle(v1, v2, v3, true);
-                    Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
                 }
             }
         }
     });
+
+    // Cleanup local temp vectors
+    Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
 
     const shape = new Ammo.btBvhTriangleMeshShape(ammoMesh, true, true);
     const transform = new Ammo.btTransform();
