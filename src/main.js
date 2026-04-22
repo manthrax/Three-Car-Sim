@@ -154,7 +154,7 @@ function initPhysics() {
     const { world } = createPhysicsWorld({ gravity: -9.82, iterations: 10 });
     physicsWorld = world;    // 1. Chassis Body - Use a Sphere for better trimesh interaction
     const chassisShape = new CANNON.Sphere(0.6);
-    carPhysicsBody = new CANNON.Body({ 
+    carPhysicsBody = new CANNON.Body({
         mass: CHASSIS_MASS,
         collisionFilterGroup: GROUPS.CAR,
         collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
@@ -536,6 +536,8 @@ function updateCameraFollow() {
     camera.position.lerp(desired, CAM_LAG);
     camera.lookAt(car.position.x, car.position.y + 0.5, car.position.z);
 }
+let v0 = new THREE.Vector3(0, 0, 0);
+let v1 = new THREE.Vector3(0, 0, 0);
 
 // ----------------------- ANIMATE --------------------------------------------------------
 function animate() {
@@ -570,10 +572,10 @@ function animate() {
     vehicle.applyEngineForce(currentEngineForce, 1);
     vehicle.applyEngineForce(currentEngineForce, 2);
     vehicle.applyEngineForce(currentEngineForce, 3);
-    
+
     vehicle.setSteeringValue(currentSteeringValue, 2);
     vehicle.setSteeringValue(currentSteeringValue, 3);
-    
+
     vehicle.setBrake(currentBrakeForce, 0);
     vehicle.setBrake(currentBrakeForce, 1);
     vehicle.setBrake(currentBrakeForce, 2);
@@ -588,6 +590,8 @@ function animate() {
     // Update visuals
     car.position.copy(carPhysicsBody.position);
     car.quaternion.copy(carPhysicsBody.quaternion);
+    v0.set(0, -0.5, 0).applyQuaternion(car.quaternion);
+    car.position.add(v0);
 
     updateWheelSpin();
 
