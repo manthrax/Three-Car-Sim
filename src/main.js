@@ -305,7 +305,11 @@ function animate() {
 }
 
 // Start after Ammo initializes
+console.log('Initializing Ammo.js...');
 Ammo().then((AmmoLib) => {
+    console.log('Ammo.js ready!');
     window.Ammo = AmmoLib;
     setup();
+}).catch(err => {
+    console.error('Failed to initialize Ammo.js:', err);
 });

@@ -45,6 +45,8 @@ export function createRigidBody(mesh, shape, mass, pos, quat) {
 }
 
 export function makeMapBody(physicsWorld, visualMesh) {
+    console.log('[Physics] Starting map trimesh generation...');
+    const startTime = performance.now();
     const ammoMesh = new Ammo.btTriangleMesh();
     visualMesh.updateMatrixWorld(true);
 
@@ -52,8 +54,10 @@ export function makeMapBody(physicsWorld, visualMesh) {
     const v2 = new Ammo.btVector3();
     const v3 = new Ammo.btVector3();
 
+    let triCount = 0;
     visualMesh.traverse((node) => {
         if (node.isMesh && node.geometry) {
+            console.log(`[Physics] Processing mesh: ${node.name}`);
             const geometry = node.geometry.index ? node.geometry : node.geometry.toNonIndexed();
             const vertices = geometry.attributes.position.array;
             const indices = geometry.index ? geometry.index.array : null;
@@ -73,6 +77,7 @@ export function makeMapBody(physicsWorld, visualMesh) {
                     v2.setValue(tempV2.x, tempV2.y, tempV2.z);
                     v3.setValue(tempV3.x, tempV3.y, tempV3.z);
                     ammoMesh.addTriangle(v1, v2, v3, true);
+                    triCount++;
                 }
             } else {
                 for (let i = 0; i < vertices.length; i += 9) {
@@ -84,14 +89,18 @@ export function makeMapBody(physicsWorld, visualMesh) {
                     v2.setValue(tempV2.x, tempV2.y, tempV2.z);
                     v3.setValue(tempV3.x, tempV3.y, tempV3.z);
                     ammoMesh.addTriangle(v1, v2, v3, true);
+                    triCount++;
                 }
             }
         }
     });
 
+    console.log(`[Physics] Built ammoMesh with ${triCount} triangles.`);
+    
     // Cleanup local temp vectors
     Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
 
+    console.log('[Physics] Building BVH Triangle Mesh Shape...');
     const shape = new Ammo.btBvhTriangleMeshShape(ammoMesh, true, true);
     const transform = new Ammo.btTransform();
     transform.setIdentity();
@@ -101,6 +110,8 @@ export function makeMapBody(physicsWorld, visualMesh) {
     const body = new Ammo.btRigidBody(rbInfo);
     
     physicsWorld.addRigidBody(body);
+    const endTime = performance.now();
+    console.log(`[Physics] Map trimesh built in ${(endTime - startTime).toFixed(2)}ms`);
     return body;
 }
 
