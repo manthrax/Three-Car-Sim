@@ -191,6 +191,7 @@ function initPhysics() {
         dampingRelaxation: 2.3,
         dampingCompression: 4.4,
         maxSuspensionForce: 100000,
+        maxSuspensionTravel: 0.5,
         rollInfluence: 0.01,
         axleLocal: new CANNON.Vec3(0, 0, 1),
         chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
