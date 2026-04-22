@@ -57,8 +57,7 @@ export function makeMapBody(physicsWorld, visualMesh) {
     let triCount = 0;
     visualMesh.traverse((node) => {
         if (node.isMesh && node.geometry) {
-            console.log(`[Physics] Processing mesh: ${node.name}`);
-            const geometry = node.geometry.index ? node.geometry : node.geometry.toNonIndexed();
+            const geometry = node.geometry;
             const vertices = geometry.attributes.position.array;
             const indices = geometry.index ? geometry.index.array : null;
             const worldMatrix = node.matrixWorld;
@@ -69,9 +68,13 @@ export function makeMapBody(physicsWorld, visualMesh) {
 
             if (indices) {
                 for (let i = 0; i < indices.length; i += 3) {
-                    tempV1.set(vertices[indices[i] * 3], vertices[indices[i] * 3 + 1], vertices[indices[i] * 3 + 2]).applyMatrix4(worldMatrix);
-                    tempV2.set(vertices[indices[i + 1] * 3], vertices[indices[i + 1] * 3 + 1], vertices[indices[i + 1] * 3 + 2]).applyMatrix4(worldMatrix);
-                    tempV3.set(vertices[indices[i + 2] * 3], vertices[indices[i + 2] * 3 + 1], vertices[indices[i + 2] * 3 + 2]).applyMatrix4(worldMatrix);
+                    const i1 = indices[i];
+                    const i2 = indices[i + 1];
+                    const i3 = indices[i + 2];
+
+                    tempV1.set(vertices[i1 * 3], vertices[i1 * 3 + 1], vertices[i1 * 3 + 2]).applyMatrix4(worldMatrix);
+                    tempV2.set(vertices[i2 * 3], vertices[i2 * 3 + 1], vertices[i2 * 3 + 2]).applyMatrix4(worldMatrix);
+                    tempV3.set(vertices[i3 * 3], vertices[i3 * 3 + 1], vertices[i3 * 3 + 2]).applyMatrix4(worldMatrix);
 
                     v1.setValue(tempV1.x, tempV1.y, tempV1.z);
                     v2.setValue(tempV2.x, tempV2.y, tempV2.z);

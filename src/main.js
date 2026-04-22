@@ -224,7 +224,9 @@ function addLights(scene) {
 }
 
 async function setup() {
+    console.log('[Setup] Starting setup...');
     const manager = createLoadingManager();
+
     camera = new THREE.PerspectiveCamera(CAM_FOV, window.innerWidth / window.innerHeight, CAM_NEAR, CAM_FAR);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -232,10 +234,14 @@ async function setup() {
     document.getElementById('app').appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
+    console.log('[Setup] Creating environment...');
     await createEnvironment(scene, hdrPath, {}, ENV_OPTIONS, null, manager);
 
+    console.log('[Setup] Initializing physics...');
     initPhysics();
+    console.log('[Setup] Spawning map...');
     await spawnMap(scene, manager);
+    console.log('[Setup] Drawing car...');
     drawCar(scene, manager);
     addLights(scene);
 
