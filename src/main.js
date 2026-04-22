@@ -459,7 +459,7 @@ async function setup() {
     orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.enableDamping = true;
     orbitControls.dampingFactor = 0.05;
-    orbitControls.target.set(CAR_SPAWN.x, CAR_SPAWN.y, CAR_SPAWN.z);
+    orbitControls.target.set(0, 0, 0);
 
     animate();
 }
