@@ -549,16 +549,22 @@ function updateRaycastDebugger() {
         const wheel = vehicle.wheelInfos[i];
         const line = raycastLines[i];
         
-        // Origin in world space
-        const origin = wheel.worldTransform.position;
-        // Direction is always down in this setup, let's just find the hit point or max length
+        // Calculate world direction based on chassis orientation
+        const directionLocal = new CANNON.Vec3(0, -1, 0);
+        const directionWorld = new CANNON.Vec3();
+        vehicle.chassisBody.quaternion.vmult(directionLocal, directionWorld);
+
         const rayLength = wheel.suspensionRestLength + wheel.radius;
         const hitPoint = wheel.raycastResult.hitPointWorld;
         
         const start = new THREE.Vector3(origin.x, origin.y, origin.z);
         const end = wheel.raycastResult.hasHit 
             ? new THREE.Vector3(hitPoint.x, hitPoint.y, hitPoint.z)
-            : new THREE.Vector3(origin.x, origin.y - rayLength, origin.z);
+            : new THREE.Vector3(
+                origin.x + directionWorld.x * rayLength,
+                origin.y + directionWorld.y * rayLength,
+                origin.z + directionWorld.z * rayLength
+            );
 
         line.geometry.setFromPoints([start, end]);
     }
