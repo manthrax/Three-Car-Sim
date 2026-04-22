@@ -549,6 +549,10 @@ function updateRaycastDebugger() {
         const wheel = vehicle.wheelInfos[i];
         const line = raycastLines[i];
         
+        // Correct origin: The chassis connection point in world space
+        const origin = new CANNON.Vec3();
+        vehicle.chassisBody.pointToWorldFrame(wheel.chassisConnectionPointLocal, origin);
+
         // Calculate world direction based on chassis orientation
         const directionLocal = new CANNON.Vec3(0, -1, 0);
         const directionWorld = new CANNON.Vec3();
