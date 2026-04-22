@@ -168,7 +168,7 @@ async function spawnMap(scene, manager) {
             scene.add(mapScene);
             optimizeMaterials(mapScene);
             mapVisual = mapScene;
-            makeMapBody(physicsWorld, mapScene);
+            // makeMapBody(physicsWorld, mapScene);
             respawnCar();
             resolve();
         });
