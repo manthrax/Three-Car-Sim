@@ -74,36 +74,17 @@ var wheelMeshes = [];
 var carVelocityX = 0;
 var carVelocityZ = 0;
 
-// --- GRADUAL ACCELERATION ---
-var carSpeed = 0;
-const MAX_SPEED = 0.25;
-const BOOST_SPEED = 0.4;
-const REVERSE_SPEED = 0.06;
-const ACCELERATION = 0.002;
-const BOOST_ACCEL = 0.004;
-const DECELERATION = 0.001;
-// ----------------------------
+// -------------------- VEHICLE SETTINGS -------------------------------
+var vehicle;
+const CHASSIS_MASS = 150;
+const WHEEL_RADIUS = 0.2;
+const STEER_MAX = 0.5;
+const ENGINE_FORCE_MAX = 1500;
+const BRAKE_FORCE_MAX = 50;
 
-// ------------------------- CRASH DETECTION AND DEACCELERATION --------------------------------------
-
-const CRASH_THRESHOLD = 0.05;
-const CRASH_VEL_DIFF = 2.0;
-
-var _intendedVelX = 0;
-var _intendedVelZ = 0;
-
-const CAR_BODY_HEIGHT = 2;
-const CAR_WHEEL_RADIUS = 0.15;
-
-const CAR_VISUAL_Y = -0.5 + CAR_BODY_HEIGHT / 2 + CAR_WHEEL_RADIUS;
-const CAR_WHEEL_ROTATION_FRONT = Math.PI / 6;
-
-// -------------------- GRADUAL STEERING -------------------------------
-var currentSteeringAngle = 0;
-const MAX_STEER_ANGLE = Math.PI / 6;
-const STEER_SPEED = 0.05;
-const STEER_RETURN_SPEED = 0.08;
-
+var currentSteeringValue = 0;
+var currentEngineForce = 0;
+var currentBrakeForce = 0;
 
 // ------------------------------ LIGHTS ---------------------------
 const AMBIENT_LIGHT_COLOR = 0x404040;
@@ -168,17 +149,55 @@ function initPhysics() {
     const { world } = createPhysicsWorld({ gravity: -9.82, iterations: 10 });
     physicsWorld = world;
 
-    carPhysicsBody = new CANNON.Body({
-        mass: 150,
-        linearDamping: 0.0,
-        angularDamping: 1.0,
-        collisionFilterGroup: GROUPS.CAR,
-        collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
-    });
-    carPhysicsBody.addShape(new CANNON.Sphere(0.5));
+    // 1. Chassis Body
+    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.4, 0.55));
+    carPhysicsBody = new CANNON.Body({ mass: CHASSIS_MASS });
+    // Offset center of mass downwards to prevent flipping
+    carPhysicsBody.addShape(chassisShape, new CANNON.Vec3(0, 0, 0));
     carPhysicsBody.position.set(0, 2, 0);
     carPhysicsBody.allowSleep = false;
     physicsWorld.addBody(carPhysicsBody);
+
+    // 2. Vehicle
+    vehicle = new CANNON.RaycastVehicle({
+        chassisBody: carPhysicsBody,
+        indexForwardAxis: 0, // X is forward in your current model orientation
+        indexRightAxis: 2,   // Z is right
+        indexUpAxis: 1,      // Y is up
+    });
+
+    // 3. Wheel Options
+    const wheelOptions = {
+        radius: WHEEL_RADIUS,
+        directionLocal: new CANNON.Vec3(0, -1, 0),
+        suspensionStiffness: 30,
+        suspensionRestLength: 0.35,
+        frictionSlip: 1.4,
+        dampingRelaxation: 2.3,
+        dampingCompression: 4.4,
+        maxSuspensionForce: 100000,
+        rollInfluence: 0.01,
+        axleLocal: new CANNON.Vec3(0, 0, 1),
+        chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
+        isFrontWheel: true,
+    };
+
+    // Add 4 wheels
+    // Front Right
+    wheelOptions.chassisConnectionPointLocal.set(1.0, 0, 0.6);
+    vehicle.addWheel(wheelOptions);
+    // Front Left
+    wheelOptions.chassisConnectionPointLocal.set(1.0, 0, -0.6);
+    vehicle.addWheel(wheelOptions);
+    // Rear Right
+    wheelOptions.isFrontWheel = false;
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, 0, 0.6);
+    vehicle.addWheel(wheelOptions);
+    // Rear Left
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, 0, -0.6);
+    vehicle.addWheel(wheelOptions);
+
+    vehicle.addToWorld(physicsWorld);
 }
 
 // --------------------- makeMapBody --------------------------------------------------------
@@ -209,20 +228,20 @@ function findGroundY(x, z) {
 
 function respawnCar() {
     if (!car || !carPhysicsBody) return;
-    
+
     // User requested spawn point
     const spawnX = 0.2;
     const spawnY = 1.27;
     const spawnZ = 0.47;
-    
+
     carPhysicsBody.position.set(spawnX, spawnY, spawnZ);
     carPhysicsBody.velocity.set(0, 0, 0);
     carPhysicsBody.angularVelocity.set(0, 0, 0);
     carPhysicsBody.quaternion.set(0, 0, 0, 1);
-    
+
     car.position.set(spawnX, spawnY, spawnZ);
     car.rotation.set(0, 0, 0);
-    
+
     carSpeed = 0;
     console.log(`Car respawned at: ${spawnX}, ${spawnY}, ${spawnZ}`);
 }
@@ -248,6 +267,12 @@ async function spawnMap(scene, manager) {
             scene.add(mapScene);
             optimizeMaterials(mapScene);
             mapVisual = mapScene;
+
+
+
+            mapBody = makeMapBody(physicsWorld, mapScene);
+
+
             resolve();
         });
     });
@@ -256,7 +281,7 @@ async function spawnMap(scene, manager) {
     respawnCar();
 
     // 2. Collision proxy — same transform as the visual map, never added to scene
-    await new Promise((resolve) => {
+    /*await new Promise((resolve) => {
         loader.load('models/collisions.glb', (gltf) => {
             const collisionScene = gltf.scene;
 
@@ -278,7 +303,7 @@ async function spawnMap(scene, manager) {
             console.error('[spawnMap] Failed to load collisions.glb:', err);
             resolve(); // don't block startup if the file is missing
         });
-    });
+    });*/
 }
 
 // ----------------------- STREET LAMP POSTS -------------------------------------------------
@@ -469,18 +494,17 @@ async function setup() {
 
 // ----------------------- CAR CONTROL HELPERS --------------------------------------------------------
 
-function setSteeringAngle(angle) {
-    if (wheelPivots.length === 0) return;
-    // Only steer the front two wheels (indices 0 & 1)
-    wheelPivots[2].rotation.y = angle;
-    wheelPivots[3].rotation.y = angle;
-}
-
 function updateWheelSpin() {
-    if (wheelMeshes.length === 0) return;
-    const spinSpeed = carSpeed * -4; // Proportional to current speed
-    for (const mesh of wheelMeshes) {
-        mesh.rotation.y += spinSpeed;
+    if (wheelMeshes.length === 0 || !vehicle) return;
+    
+    for (let i = 0; i < vehicle.wheelInfos.length; i++) {
+        vehicle.updateWheelTransform(i);
+        const transform = vehicle.wheelInfos[i].worldTransform;
+        const wheelPivot = wheelPivots[i];
+        const wheelMesh = wheelMeshes[i];
+
+        wheelPivot.position.copy(transform.position);
+        wheelPivot.quaternion.copy(transform.quaternion);
     }
 }
 
@@ -500,100 +524,51 @@ function updateCameraFollow() {
 
 // ----------------------- ANIMATE --------------------------------------------------------
 function animate() {
-
     const isBoosting = keys['ShiftLeft'] && keys['KeyW'];
     const pressingForward = keys['KeyW'];
     const pressingBackward = keys['KeyS'];
 
-    // ---------------------- ACCELERATION & DECELERATION ------------------------------------------------------
-    if (isBoosting) {
-        carSpeed += BOOST_ACCEL;
-        if (carSpeed > BOOST_SPEED) carSpeed = BOOST_SPEED;
+    // ---------------------- CONTROLS ------------------------------------------------------
+    currentEngineForce = 0;
+    currentBrakeForce = 0;
 
-    } else if (pressingForward) {
-        if (carSpeed < 0) {
-            carSpeed += DECELERATION * 2;
-            if (carSpeed > 0) carSpeed = 0;
-        } else {
-            carSpeed += ACCELERATION;
-            if (carSpeed > MAX_SPEED) carSpeed = MAX_SPEED;
-        }
+    const force = isBoosting ? ENGINE_FORCE_MAX * 2 : ENGINE_FORCE_MAX;
 
+    if (pressingForward) {
+        currentEngineForce = force;
     } else if (pressingBackward) {
-        if (carSpeed > 0) {
-            carSpeed -= DECELERATION * 2;
-            if (carSpeed < 0) carSpeed = 0;
-        } else {
-            carSpeed -= ACCELERATION;
-            if (carSpeed < -REVERSE_SPEED) carSpeed = -REVERSE_SPEED;
-        }
-
-    } else {
-        if (carSpeed > 0) { carSpeed -= DECELERATION; if (carSpeed < 0) carSpeed = 0; }
-        else if (carSpeed < 0) { carSpeed += DECELERATION; if (carSpeed > 0) carSpeed = 0; }
+        currentEngineForce = -force / 2;
     }
 
-    // ------------------------- STEERING ------------------------------------------------------
-    let targetSteeringAngle = 0;
-    if (keys['KeyA']) targetSteeringAngle = MAX_STEER_ANGLE;
-    if (keys['KeyD']) targetSteeringAngle = -MAX_STEER_ANGLE;
-
-    const lerpRate = (targetSteeringAngle === 0) ? STEER_RETURN_SPEED : STEER_SPEED;
-    currentSteeringAngle += (targetSteeringAngle - currentSteeringAngle) * lerpRate;
-    currentSteeringAngle = Math.max(-MAX_STEER_ANGLE, Math.min(MAX_STEER_ANGLE, currentSteeringAngle));
-
-    setSteeringAngle(currentSteeringAngle);
-
-    if (Math.abs(carSpeed) > 0.0001) {
-        const speedFactor = Math.min(Math.abs(carSpeed) / MAX_SPEED, 1.0);
-        const highSpeedDamping = 1.0 - speedFactor * 0.8;
-        const turnAmount = currentSteeringAngle * 0.18 * speedFactor * highSpeedDamping;
-        car.rotation.y += (carSpeed >= 0) ? turnAmount : -turnAmount;
+    if (keys['Space']) {
+        currentBrakeForce = BRAKE_FORCE_MAX;
     }
 
-    const carDirection = new THREE.Vector3();
-    car.getWorldDirection(carDirection);
+    let targetSteering = 0;
+    if (keys['KeyA']) targetSteering = STEER_MAX;
+    if (keys['KeyD']) targetSteering = -STEER_MAX;
 
-    carVelocityX = carDirection.x * carSpeed * 60;
-    carVelocityZ = carDirection.z * carSpeed * 60;
+    currentSteeringValue += (targetSteering - currentSteeringValue) * 0.1;
 
-    updateWheelSpin();
-
-    _intendedVelX = carVelocityX;
-    _intendedVelZ = carVelocityZ;
-
-    carPhysicsBody.velocity.set(
-        carVelocityX,
-        carPhysicsBody.velocity.y,
-        carVelocityZ,
-    );
-
-    carPhysicsBody.quaternion.set(
-        car.quaternion.x, car.quaternion.y,
-        car.quaternion.z, car.quaternion.w,
-    );
-    carPhysicsBody.angularVelocity.set(0, 0, 0);
+    // Apply to vehicle
+    vehicle.applyEngineForce(currentEngineForce, 2);
+    vehicle.applyEngineForce(currentEngineForce, 3);
+    vehicle.setSteeringValue(currentSteeringValue, 0);
+    vehicle.setSteeringValue(currentSteeringValue, 1);
+    vehicle.setBrake(currentBrakeForce, 0);
+    vehicle.setBrake(currentBrakeForce, 1);
+    vehicle.setBrake(currentBrakeForce, 2);
+    vehicle.setBrake(currentBrakeForce, 3);
 
     timer.update();
     const delta = timer.getDelta();
-    physicsWorld.step(1 / 60, delta, 3);
+    physicsWorld.step(1 / 60, delta, 2);
 
-    // ------------------------ CRASH DETECTION ------------------------------------------------------
-    if (Math.abs(carSpeed) > CRASH_THRESHOLD) {
-        const actualX = carPhysicsBody.velocity.x;
-        const actualZ = carPhysicsBody.velocity.z;
-        const diffX = _intendedVelX - actualX;
-        const diffZ = _intendedVelZ - actualZ;
-        const velDelta = Math.sqrt(diffX * diffX + diffZ * diffZ);
+    // Update visuals
+    car.position.copy(carPhysicsBody.position);
+    car.quaternion.copy(carPhysicsBody.quaternion);
 
-        if (velDelta > CRASH_VEL_DIFF) {
-            carSpeed = 0;
-        }
-    }
-
-    car.position.x = carPhysicsBody.position.x;
-    car.position.z = carPhysicsBody.position.z;
-    car.position.y = carPhysicsBody.position.y - CAR_BOX_HY + CAR_VISUAL_Y;
+    updateWheelSpin();
 
     for (const { body, mesh, meshCentreOffset } of lampPhysicsBodies) {
         syncMeshToBody(body, mesh, meshCentreOffset);
