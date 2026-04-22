@@ -176,7 +176,7 @@ function initPhysics() {
         collisionFilterMask:  GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
     });
     carPhysicsBody.addShape(new CANNON.Box(new CANNON.Vec3(CAR_BOX_HX, CAR_BOX_HY, CAR_BOX_HZ)));
-    carPhysicsBody.position.set(CAR_SPAWN.x, CAR_SPAWN.y, CAR_SPAWN.z);
+    carPhysicsBody.position.set(0, 2, 0); // Default start, respawnCar() fixes this after map loads
     physicsWorld.addBody(carPhysicsBody);
 }
 
@@ -190,13 +190,41 @@ const MAP_OFFSET = {
     z: 0,
 };
 
-const CAR_SPAWN = { 
-    x: 0,
-    y: 2, 
-    z: 0,
-};
-        // ------------------- IMPORT MAP -----------------------------------------------
 var mapBody = null;
+var mapVisual = null;
+
+function findGroundY(x, z) {
+    const raycaster = new THREE.Raycaster();
+    raycaster.set(new THREE.Vector3(x, 1000, z), new THREE.Vector3(0, -1, 0));
+    
+    if (!mapVisual) return 2; // Fallback
+
+    const intersects = raycaster.intersectObject(mapVisual, true);
+    if (intersects.length > 0) {
+        return intersects[0].point.y + 0.5;
+    }
+    return 2;
+}
+
+function respawnCar() {
+    if (!car || !carPhysicsBody) return;
+    
+    // Pick a spot (could be randomized or fixed)
+    const spawnX = 0;
+    const spawnZ = 0;
+    const spawnY = findGroundY(spawnX, spawnZ);
+    
+    carPhysicsBody.position.set(spawnX, spawnY, spawnZ);
+    carPhysicsBody.velocity.set(0, 0, 0);
+    carPhysicsBody.angularVelocity.set(0, 0, 0);
+    carPhysicsBody.quaternion.set(0, 0, 0, 1);
+    
+    car.position.set(spawnX, spawnY, spawnZ);
+    car.rotation.set(0, 0, 0);
+    
+    carSpeed = 0;
+    console.log(`Car respawned at: ${spawnX}, ${spawnY}, ${spawnZ}`);
+}
 
 async function spawnMap(scene, manager) {
     const loader = new GLTFLoader(manager);
@@ -218,9 +246,13 @@ async function spawnMap(scene, manager) {
 
             scene.add(mapScene);
             optimizeMaterials(mapScene);
+            mapVisual = mapScene;
             resolve();
         });
     });
+
+    // ... after visual map is loaded, we can respawn the car correctly
+    respawnCar();
 
     // 2. Collision proxy — same transform as the visual map, never added to scene
     await new Promise((resolve) => {
@@ -417,6 +449,9 @@ async function setup() {
         if (e.code === 'KeyC') {
             useOrbitControls = !useOrbitControls;
             console.log('Camera mode:', useOrbitControls ? 'Orbit Controls' : 'Third Person');
+        }
+        if (e.code === 'KeyR') {
+            respawnCar();
         }
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
