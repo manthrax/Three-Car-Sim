@@ -77,11 +77,11 @@ var carVelocityZ = 0;
 
 // -------------------- VEHICLE SETTINGS -------------------------------
 var vehicle;
-const CHASSIS_MASS = 150;
+const CHASSIS_MASS = 250;
 const WHEEL_RADIUS = 0.2;
 const STEER_MAX = 0.5;
-const ENGINE_FORCE_MAX = 1500;
-const BRAKE_FORCE_MAX = 50;
+const ENGINE_FORCE_MAX = 800;
+const BRAKE_FORCE_MAX = 30;
 
 const CAR_BODY_HEIGHT = 2;
 const CAR_WHEEL_RADIUS = 0.15;
@@ -567,11 +567,11 @@ function animate() {
 
     currentSteeringValue += (targetSteering - currentSteeringValue) * 0.1;
 
-    // Apply to vehicle
-    vehicle.applyEngineForce(currentEngineForce, 0);
-    vehicle.applyEngineForce(currentEngineForce, 1);
-    vehicle.applyEngineForce(currentEngineForce, 2);
-    vehicle.applyEngineForce(currentEngineForce, 3);
+    // Apply to vehicle (Inverted to match model's forward axis)
+    vehicle.applyEngineForce(-currentEngineForce, 0);
+    vehicle.applyEngineForce(-currentEngineForce, 1);
+    vehicle.applyEngineForce(-currentEngineForce, 2);
+    vehicle.applyEngineForce(-currentEngineForce, 3);
 
     vehicle.setSteeringValue(currentSteeringValue, 2);
     vehicle.setSteeringValue(currentSteeringValue, 3);
@@ -590,7 +590,7 @@ function animate() {
     // Update visuals
     car.position.copy(carPhysicsBody.position);
     car.quaternion.copy(carPhysicsBody.quaternion);
-    v0.set(0, -0.5, 0).applyQuaternion(car.quaternion);
+    v0.set(0.2, -0.65, 0).applyQuaternion(car.quaternion);
     car.position.add(v0);
 
     updateWheelSpin();
