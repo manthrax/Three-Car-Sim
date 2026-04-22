@@ -1,25 +1,28 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>vite-project</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <div id="ui-overlay">
-      <div class="card glass">
-        <h1>Car Sim</h1>
-        <p>WASD to Drive | Shift to Boost | C to Toggle Camera</p>
-        <div class="stats">
-          <div class="stat-item">
-            <span class="label">Speed</span>
-            <span id="speed-val" class="value">0</span>
-          </div>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vite-project</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <div id="ui-overlay">
+    <div class="card glass">
+      <h1>Car Sim</h1>
+      <p>WASD to Drive | Shift to Boost | C to Toggle Camera</p>
+      <div class="stats">
+        <div class="stat-item">
+          <span class="label">Speed</span>
+          <span id="speed-val" class="value">0</span>
         </div>
       </div>
     </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>
