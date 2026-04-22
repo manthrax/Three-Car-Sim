@@ -209,20 +209,20 @@ function findGroundY(x, z) {
 
 function respawnCar() {
     if (!car || !carPhysicsBody) return;
-
-    // Pick a spot (could be randomized or fixed)
-    const spawnX = 0;
-    const spawnZ = 0;
-    const spawnY = findGroundY(spawnX, spawnZ);
-
+    
+    // User requested spawn point
+    const spawnX = 0.2;
+    const spawnY = 1.27;
+    const spawnZ = 0.47;
+    
     carPhysicsBody.position.set(spawnX, spawnY, spawnZ);
     carPhysicsBody.velocity.set(0, 0, 0);
     carPhysicsBody.angularVelocity.set(0, 0, 0);
     carPhysicsBody.quaternion.set(0, 0, 0, 1);
-
+    
     car.position.set(spawnX, spawnY, spawnZ);
     car.rotation.set(0, 0, 0);
-
+    
     carSpeed = 0;
     console.log(`Car respawned at: ${spawnX}, ${spawnY}, ${spawnZ}`);
 }
@@ -265,7 +265,7 @@ async function spawnMap(scene, manager) {
             collisionScene.position.set(MAP_OFFSET.x, MAP_OFFSET.y, MAP_OFFSET.z);
             collisionScene.updateMatrixWorld(true);
 
-            //mapBody = makeMapBody(physicsWorld, collisionScene);
+            mapBody = makeMapBody(physicsWorld, collisionScene);
 
             if (!mapBody) {
                 console.warn('[spawnMap] collisions.glb produced no physics body — check the mesh export');
