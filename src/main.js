@@ -150,16 +150,14 @@ const timer = new THREE.Timer();
 
 function initPhysics() {
     const { world } = createPhysicsWorld({ gravity: -9.82, iterations: 10 });
-    physicsWorld = world;
-
-    // 1. Chassis Body
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.4, 0.55));
-    carPhysicsBody = new CANNON.Body({
+    physicsWorld = world;    // 1. Chassis Body - Use a Sphere for better trimesh interaction
+    const chassisShape = new CANNON.Sphere(0.6);
+    carPhysicsBody = new CANNON.Body({ 
         mass: CHASSIS_MASS,
         collisionFilterGroup: GROUPS.CAR,
         collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
     });
-    // Offset center of mass downwards to prevent flipping
+    // Center the sphere
     carPhysicsBody.addShape(chassisShape, new CANNON.Vec3(0, 0, 0));
     carPhysicsBody.position.set(0, 2, 0);
     carPhysicsBody.allowSleep = false;
@@ -177,8 +175,8 @@ function initPhysics() {
     const wheelOptions = {
         radius: WHEEL_RADIUS,
         directionLocal: new CANNON.Vec3(0, -1, 0),
-        suspensionStiffness: 30,
-        suspensionRestLength: 0.6,
+        suspensionStiffness: 40,
+        suspensionRestLength: 0.3,
         frictionSlip: 1.4,
         dampingRelaxation: 2.3,
         dampingCompression: 4.4,
@@ -189,8 +187,8 @@ function initPhysics() {
         isFrontWheel: true,
     };
 
-    // Add 4 wheels - Move connection points down (-0.3) so wheels are below chassis
-    const downOffset = -0.3;
+    // Add 4 wheels - Move connection points down slightly
+    const downOffset = -0.1;
     // Front Right
     wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, 0.6);
     vehicle.addWheel(wheelOptions);
@@ -206,7 +204,7 @@ function initPhysics() {
     wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, -0.6);
     vehicle.addWheel(wheelOptions);
 
-    vehicle.addToWorld(physicsWorld);
+    vehicle.addToWorld(physicsWorld);ld);
 }
 
 // --------------------- makeMapBody --------------------------------------------------------
@@ -426,7 +424,7 @@ function drawCar(scene, manager) {
         }
     });
 
-    car.translateY(-0.5 + CAR_BODY_HEIGHT / 2 + CAR_WHEEL_RADIUS);
+    car.translateY(0.2);
     scene.add(car);
 }
 
