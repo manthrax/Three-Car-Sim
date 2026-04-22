@@ -428,7 +428,7 @@ function drawCar(scene, manager) {
         }
     });
 
-    car.translateY(0.2);
+    car.translateY(-0.5);
     scene.add(car);
 }
 
