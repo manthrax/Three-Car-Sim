@@ -154,7 +154,7 @@ function initPhysics() {
 
     // 1. Chassis Body
     const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.4, 0.55));
-    carPhysicsBody = new CANNON.Body({ 
+    carPhysicsBody = new CANNON.Body({
         mass: CHASSIS_MASS,
         collisionFilterGroup: GROUPS.CAR,
         collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
@@ -178,7 +178,7 @@ function initPhysics() {
         radius: WHEEL_RADIUS,
         directionLocal: new CANNON.Vec3(0, -1, 0),
         suspensionStiffness: 30,
-        suspensionRestLength: 0.4,
+        suspensionRestLength: 0.6,
         frictionSlip: 1.4,
         dampingRelaxation: 2.3,
         dampingCompression: 4.4,
@@ -239,8 +239,8 @@ function respawnCar() {
     if (!car || !carPhysicsBody) return;
 
     // User requested spawn coordinates (X, Z)
-    const spawnX = 0.2;
-    const spawnZ = 0.47;
+    const spawnX = 4.5;
+    const spawnZ = 4.47;
     // Automatically find the correct ground Y at this spot and add a safety margin
     const spawnY = findGroundY(spawnX, spawnZ) + 1.5;
 
@@ -248,7 +248,7 @@ function respawnCar() {
     carPhysicsBody.velocity.set(0, 0, 0);
     carPhysicsBody.angularVelocity.set(0, 0, 0);
     carPhysicsBody.quaternion.set(0, 0, 0, 1);
-    
+
     currentEngineForce = 0;
     currentSteeringValue = 0;
     currentBrakeForce = 0;
@@ -509,7 +509,7 @@ async function setup() {
 
 function updateWheelSpin() {
     if (wheelMeshes.length === 0 || !vehicle) return;
-    
+
     for (let i = 0; i < vehicle.wheelInfos.length; i++) {
         vehicle.updateWheelTransform(i);
         const transform = vehicle.wheelInfos[i].worldTransform;
@@ -564,10 +564,14 @@ function animate() {
     currentSteeringValue += (targetSteering - currentSteeringValue) * 0.1;
 
     // Apply to vehicle
+    vehicle.applyEngineForce(currentEngineForce, 0);
+    vehicle.applyEngineForce(currentEngineForce, 1);
     vehicle.applyEngineForce(currentEngineForce, 2);
     vehicle.applyEngineForce(currentEngineForce, 3);
-    vehicle.setSteeringValue(currentSteeringValue, 0);
-    vehicle.setSteeringValue(currentSteeringValue, 1);
+    
+    vehicle.setSteeringValue(currentSteeringValue, 2);
+    vehicle.setSteeringValue(currentSteeringValue, 3);
+    
     vehicle.setBrake(currentBrakeForce, 0);
     vehicle.setBrake(currentBrakeForce, 1);
     vehicle.setBrake(currentBrakeForce, 2);
@@ -596,7 +600,11 @@ function animate() {
     if (!useOrbitControls) {
         updateCameraFollow();
     } else {
-        orbitControls.target.lerp(new THREE.Vector3(car.position.x, car.position.y + 0.5, car.position.z), 0.1);
+        //orbitControls.target.lerp(new THREE.Vector3(car.position.x, car.position.y + 0.5, car.position.z), 0.1);
+        camera.position.sub(orbitControls.target);
+        orbitControls.target.copy(car.position);
+        camera.position.add(orbitControls.target);
+
         orbitControls.update();
     }
 
