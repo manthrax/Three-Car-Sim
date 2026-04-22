@@ -304,6 +304,7 @@ function animate() {
 }
 
 // Start after Ammo initializes
-Ammo().then(() => {
+Ammo().then((AmmoLib) => {
+    window.Ammo = AmmoLib;
     setup();
 });
