@@ -238,20 +238,24 @@ function findGroundY(x, z) {
 function respawnCar() {
     if (!car || !carPhysicsBody) return;
 
-    // User requested spawn point
+    // User requested spawn coordinates (X, Z)
     const spawnX = 0.2;
-    const spawnY = 1.27;
     const spawnZ = 0.47;
+    // Automatically find the correct ground Y at this spot
+    const spawnY = findGroundY(spawnX, spawnZ) + 0.5;
 
     carPhysicsBody.position.set(spawnX, spawnY, spawnZ);
     carPhysicsBody.velocity.set(0, 0, 0);
     carPhysicsBody.angularVelocity.set(0, 0, 0);
     carPhysicsBody.quaternion.set(0, 0, 0, 1);
+    
+    currentEngineForce = 0;
+    currentSteeringValue = 0;
+    currentBrakeForce = 0;
 
     car.position.set(spawnX, spawnY, spawnZ);
     car.rotation.set(0, 0, 0);
 
-    carSpeed = 0;
     console.log(`Car respawned at: ${spawnX}, ${spawnY}, ${spawnZ}`);
 }
 
