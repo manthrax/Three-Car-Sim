@@ -23,16 +23,7 @@ export function createPhysicsWorld({ gravity = -9.82, iterations = 10 } = {}) {
     world.solver.iterations = iterations;
     world.broadphase        = new CANNON.SAPBroadphase(world);
 
-    const groundBody = new CANNON.Body({
-        type: CANNON.Body.STATIC,
-        collisionFilterGroup: GROUPS.GROUND,
-        collisionFilterMask:  GROUPS.CAR | GROUPS.OBJECT,
-    });
-    groundBody.addShape(new CANNON.Plane());
-    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0); // face upward
-    world.addBody(groundBody);
-
-    return { world, groundBody };
+    return { world };
 }
 
 // ---- makeCarBody ---------------------------------------
