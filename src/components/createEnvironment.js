@@ -1,8 +1,8 @@
 // Environment/terrain setup for 3D scene
 import * as THREE from "three";
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
-const TILE_SIZE = 3; // Each tile is 3x3 units
+const TILE_SIZE = 10; // Optimized from 3 to 10
 
 export async function createEnvironment(
   scene,
@@ -14,7 +14,7 @@ export async function createEnvironment(
 ) {
   if (hdrPath) {
     // Load HDRI for sky/environment lighting
-    new RGBELoader(manager ?? undefined).load(hdrPath, (texture) => {
+    new HDRLoader(manager ?? undefined).load(hdrPath, (texture) => {
       texture.mapping = THREE.EquirectangularReflectionMapping;
       scene.background = texture;
       scene.environment = texture;
@@ -196,18 +196,19 @@ export async function createEnvironment(
       }
 
       const materialParams = {
-        map:          tileBaseTexture     || undefined,
-        aoMap:        tileAoTexture       || undefined,
-        normalMap:    tileNormalTexture   || undefined,
-        roughnessMap: tileRoughnessTexture || undefined,
-        roughness:    1,
-        metalness:    tileArmTexture ? 1 : 0,
+        roughness: 1,
+        metalness: tileArmTexture ? 1 : 0,
       };
+
+      if (tileBaseTexture)      materialParams.map          = tileBaseTexture;
+      if (tileNormalTexture)    materialParams.normalMap    = tileNormalTexture;
+      if (tileRoughnessTexture) materialParams.roughnessMap = tileRoughnessTexture;
+      if (tileAoTexture)        materialParams.aoMap        = tileAoTexture;
 
       if (tileArmTexture) {
         materialParams.metalnessMap  = tileArmTexture;
         materialParams.roughnessMap  = materialParams.roughnessMap || tileArmTexture;
-        materialParams.aoMap         = materialParams.aoMap || tileArmTexture;
+        materialParams.aoMap         = materialParams.aoMap        || tileArmTexture;
       }
 
       const tileMaterial = new THREE.MeshStandardMaterial(materialParams);

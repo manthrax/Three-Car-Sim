@@ -1,4 +1,5 @@
 // ----------- MODULES ------------------------------------------------------------
+import './style.css';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -136,7 +137,33 @@ const CAR_BOX_HZ = 0.8;
 const LAMP_HALF_WIDTH  = 0.12;
 const LAMP_HALF_HEIGHT = 1.5; 
 
-const clock = new THREE.Clock();
+/**
+ * Converts expensive MeshPhysicalMaterial to MeshStandardMaterial 
+ * to improve performance.
+ */
+function optimizeMaterials(root) {
+    root.traverse((node) => {
+        if (node.isMesh && node.material) {
+            // If it's a Physical material, downgrade it to Standard
+            if (node.material.isMeshPhysicalMaterial) {
+                const prevMaterial = node.material;
+                const newMaterial = new THREE.MeshStandardMaterial();
+                THREE.MeshStandardMaterial.prototype.copy.call(newMaterial, prevMaterial);
+                
+                // Physical-only properties to clean up/ignore
+                newMaterial.clearcoat = 0;
+                newMaterial.transmission = 0;
+                newMaterial.ior = 1.5;
+                newMaterial.thickness = 0;
+                
+                node.material = newMaterial;
+                prevMaterial.dispose();
+            }
+        }
+    });
+}
+
+const timer = new THREE.Timer();
 
 function initPhysics() {
     const { world } = createPhysicsWorld({ gravity: -9.82, iterations: 10 });
@@ -165,8 +192,8 @@ const MAP_OFFSET = {
 };
 
 const CAR_SPAWN = { 
-    x: 100,
-    y: 0, 
+    x: 0,
+    y: 2, 
     z: 0,
 };
         // ------------------- IMPORT MAP -----------------------------------------------
@@ -191,6 +218,7 @@ async function spawnMap(scene, manager) {
             });
 
             scene.add(mapScene);
+            optimizeMaterials(mapScene);
             resolve();
         });
     });
@@ -252,6 +280,7 @@ async function spawnStreetLamps(scene, manager) {
                 node.receiveShadow = true;
             }
         });
+        optimizeMaterials(lamp);
 
         const lampBody = makeLampBody(
             physicsWorld,
@@ -284,6 +313,7 @@ function drawCar(scene, manager) {
         carModel.rotation.y    = Math.PI;
         carModel.position.y    = 0;
         carModel.traverse((node) => { if (node.isMesh) node.castShadow = true; });
+        optimizeMaterials(carModel);
         car.add(carModel);
     });
 
@@ -350,15 +380,18 @@ async function setup() {
     camera = new THREE.PerspectiveCamera(CAM_FOV, window.innerWidth / window.innerHeight, CAM_NEAR, CAM_FAR);
     camera.position.set(CAM_INITIAL_POS.x, CAM_INITIAL_POS.y, CAM_INITIAL_POS.z);
 
-    renderer = new THREE.WebGLRenderer();
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(1);
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
 
     if (RND_ENABLE_SHADOWS) {
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type    = THREE.PCFShadowMap;
     }
 
-    document.body.appendChild(renderer.domElement);
+    document.getElementById('app').appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
 
@@ -371,9 +404,13 @@ async function setup() {
     addLights(scene);
 
     window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        camera.aspect = width / height;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        renderer.setSize(width, height);
     });
 
     window.addEventListener('keydown', (e) => { 
@@ -386,7 +423,9 @@ async function setup() {
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
     orbitControls = new OrbitControls(camera, renderer.domElement);
-    orbitControls.target.set(0, 0.5, 0);
+    orbitControls.enableDamping = true;
+    orbitControls.dampingFactor = 0.05;
+    orbitControls.target.set(CAR_SPAWN.x, CAR_SPAWN.y, CAR_SPAWN.z);
 
     animate();
 }
@@ -475,24 +514,21 @@ function animate() {
         car.rotation.y        += (carSpeed >= 0) ? turnAmount : -turnAmount;
     }
 
-    carVelocityZ =  carSpeed * Math.sin(car.rotation.y);
-    carVelocityX = -carSpeed * Math.cos(car.rotation.y);
-    car.position.x += carVelocityX;
-    car.position.z += carVelocityZ;
+    const carDirection = new THREE.Vector3();
+    car.getWorldDirection(carDirection);
+    
+    carVelocityX = carDirection.x * carSpeed * 60;
+    carVelocityZ = carDirection.z * carSpeed * 60;
 
     updateWheelSpin();
 
-    const physScale = 60;
-    const intendedX = carVelocityX * physScale;
-    const intendedZ = carVelocityZ * physScale;
-
-    _intendedVelX = intendedX;
-    _intendedVelZ = intendedZ;
+    _intendedVelX = carVelocityX;
+    _intendedVelZ = carVelocityZ;
 
     carPhysicsBody.velocity.set(
-        intendedX,
+        carVelocityX,
         carPhysicsBody.velocity.y,
-        intendedZ,
+        carVelocityZ,
     );
 
     carPhysicsBody.quaternion.set(
@@ -501,7 +537,8 @@ function animate() {
     );
     carPhysicsBody.angularVelocity.set(0, 0, 0);
 
-    const delta = clock.getDelta();
+    timer.update();
+    const delta = timer.getDelta();
     physicsWorld.step(1 / 60, delta, 3);
 
 // ------------------------ CRASH DETECTION ------------------------------------------------------
@@ -531,7 +568,12 @@ function animate() {
         car.children[0].material.color.setHSL(secs / 86400, 1, 0.5);
     }
 
-    if (!useOrbitControls) updateCameraFollow();
+    if (!useOrbitControls) {
+        updateCameraFollow();
+    } else {
+        orbitControls.target.lerp(new THREE.Vector3(car.position.x, car.position.y + 0.5, car.position.z), 0.1);
+        orbitControls.update();
+    }
 
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
