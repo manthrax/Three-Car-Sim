@@ -82,6 +82,9 @@ const STEER_MAX = 0.5;
 const ENGINE_FORCE_MAX = 1500;
 const BRAKE_FORCE_MAX = 50;
 
+const CAR_BODY_HEIGHT = 2;
+const CAR_WHEEL_RADIUS = 0.15;
+
 var currentSteeringValue = 0;
 var currentEngineForce = 0;
 var currentBrakeForce = 0;
