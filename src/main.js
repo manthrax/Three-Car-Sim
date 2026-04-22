@@ -30,15 +30,15 @@ const RND_ENABLE_SHADOWS = true;
 
 // ----------------------------- Environment ---------------------------------------------------
 
-  const hdrPath = "src/hdr/sky.hdr"; 
+  const hdrPath = "hdr/sky.hdr"; 
   const texName = "asphalt_02";
   const texturePaths = {
-    diffuseMap: `src/textures/floor/${texName}/${texName}_diff.jpg`,
-    aoMap: `src/textures/floor/${texName}/${texName}_ao.jpg`,
-    armMap: `src/textures/floor/${texName}/${texName}_arm.jpg`,
-    normalMap: `src/textures/floor/${texName}/${texName}_nor.jpg`,
-    displacementMap: `src/textures/floor/${texName}/${texName}_disp.jpg`,
-    roughnessMap: `src/textures/floor/${texName}/${texName}_rough.jpg`,
+    diffuseMap: `textures/floor/${texName}/${texName}_diff.jpg`,
+    aoMap: `textures/floor/${texName}/${texName}_ao.jpg`,
+    armMap: `textures/floor/${texName}/${texName}_arm.jpg`,
+    normalMap: `textures/floor/${texName}/${texName}_nor.jpg`,
+    displacementMap: `textures/floor/${texName}/${texName}_disp.jpg`,
+    roughnessMap: `textures/floor/${texName}/${texName}_rough.jpg`,
   };
 
 // ----------------------------- AUDIO FEATURE (ILL ADD LATER) ---------------------------------------------------
@@ -204,7 +204,7 @@ async function spawnMap(scene, manager) {
 
     // 1. Visual map — loaded into the scene, no physics
     await new Promise((resolve) => {
-        loader.load('src/models/map.glb', (gltf) => {
+        loader.load('models/map.glb', (gltf) => {
             const mapScene = gltf.scene;
 
             mapScene.scale.setScalar(MAP_SCALE);
@@ -225,7 +225,7 @@ async function spawnMap(scene, manager) {
 
     // 2. Collision proxy — same transform as the visual map, never added to scene
     await new Promise((resolve) => {
-        loader.load('src/models/collisions.glb', (gltf) => {
+        loader.load('models/collisions.glb', (gltf) => {
             const collisionScene = gltf.scene;
 
             // Must match the visual map exactly so physics lines up
@@ -263,7 +263,7 @@ async function spawnStreetLamps(scene, manager) {
 
         const { model: lamp } = await loadModel(
             loader,
-            'src/models/street_lamp.glb',
+            'models/street_lamp.glb',
             3,                                       
             new THREE.Vector3(STREET_LAMP_X, 0, posZ),
             scene,
@@ -307,7 +307,7 @@ function drawCar(scene, manager) {
     const loader = new GLTFLoader(manager);
 
     // ------------ LOAD CAR BODY ----------------------
-    loader.load('src/models/car.glb', (gltf) => {
+    loader.load('models/car.glb', (gltf) => {
         const carModel = gltf.scene;
         carModel.scale.set(0.01, 0.01, 0.01);
         carModel.rotation.y    = Math.PI;
@@ -321,7 +321,7 @@ function drawCar(scene, manager) {
     const rotationFix = new THREE.Quaternion();
     rotationFix.setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
 
-    loader.load('src/models/wheel.glb', (gltf) => {
+    loader.load('models/wheel.glb', (gltf) => {
         const wheelTemplate = gltf.scene.children[0];
         wheelTemplate.scale.set(0.01, 0.01, 0.01);
         wheelTemplate.rotation.x = Math.PI;
