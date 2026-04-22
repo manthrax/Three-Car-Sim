@@ -190,7 +190,7 @@ function initPhysics() {
     };
 
     // Add 4 wheels - Move connection points down slightly
-    const downOffset = -0.1;
+    const downOffset = -0.3;
     // Front Right
     wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, 0.6);
     vehicle.addWheel(wheelOptions);
