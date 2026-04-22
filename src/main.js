@@ -79,8 +79,8 @@ var carSpeed = 0;
 const MAX_SPEED     = 0.25;
 const BOOST_SPEED   = 0.4;
 const REVERSE_SPEED = 0.06;
-const ACCELERATION  = 0.0004;
-const BOOST_ACCEL   = 0.0008;
+const ACCELERATION  = 0.002;
+const BOOST_ACCEL   = 0.004;
 const DECELERATION  = 0.001;
 // ----------------------------
 
@@ -175,8 +175,9 @@ function initPhysics() {
         collisionFilterGroup: GROUPS.CAR,
         collisionFilterMask:  GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
     });
-    carPhysicsBody.addShape(new CANNON.Box(new CANNON.Vec3(CAR_BOX_HX, CAR_BOX_HY, CAR_BOX_HZ)));
-    carPhysicsBody.position.set(0, 2, 0); // Default start, respawnCar() fixes this after map loads
+    carPhysicsBody.addShape(new CANNON.Sphere(0.5)); 
+    carPhysicsBody.position.set(0, 2, 0); 
+    carPhysicsBody.allowSleep = false;
     physicsWorld.addBody(carPhysicsBody);
 }
 
