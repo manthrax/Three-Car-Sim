@@ -223,6 +223,7 @@ function initPhysics() {
     for (let i = 0; i < 4; i++) {
         const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -1, 0)]);
         const line = new THREE.Line(geo, lineMat);
+        line.frustumCulled = false;
         scene.add(line);
         raycastLines.push(line);
     }
