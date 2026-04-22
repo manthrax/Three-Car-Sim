@@ -1,216 +1,101 @@
-// CANNON PHYSICS FOR MAIN.JS
+// AMMO.JS PHYSICS UTILITIES
+/* global Ammo */
 
-import * as CANNON from 'cannon-es';
-import * as THREE  from 'three';
+import * as THREE from 'three';
 
-// ------ COLLISIONS -------------------------------------------------
-
-// Each object belongs to its own collision group and what it should collide with is numbered by its mask
-
-export const GROUPS = {
-    CAR:    1,  // bit 0
-    GROUND: 2,  // bit 1
-    OBJECT: 4,  // bit 2
-    MAP:    8,  // bit 3 — static map trimesh
-};
-
-// ---- PHYSICS WORLD ------------------------------------------------
-// Creates a CANNON.World with gravity and a ground
-
-export function createPhysicsWorld({ gravity = -9.82, iterations = 10 } = {}) {
-    const world = new CANNON.World({ gravity: new CANNON.Vec3(0, gravity, 0) });
-    world.allowSleep        = true;
-    world.solver.iterations = iterations;
-    world.broadphase        = new CANNON.SAPBroadphase(world);
-
-    return { world };
+export function createPhysicsWorld() {
+    const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+    const dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+    const overlappingPairCache = new Ammo.btDbvtBroadphase();
+    const solver = new Ammo.btSequentialImpulseConstraintSolver();
+    const physicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+    
+    physicsWorld.setGravity(new Ammo.btVector3(0, -9.82, 0));
+    
+    return {
+        physicsWorld,
+        dispatcher,
+        overlappingPairCache,
+        solver,
+        collisionConfiguration
+    };
 }
 
-// ---- makeCarBody ---------------------------------------
-
-export function makeCarBody(world, { hx, hy, hz }, mass = 150) {
-    const body = new CANNON.Body({
-        mass,
-        linearDamping:  0.0,  // DO NOT raise — we own velocity each frame
-        angularDamping: 1.0,  // damps spin from impacts but not our yaw control
-        collisionFilterGroup: GROUPS.CAR,
-        collisionFilterMask:  GROUPS.GROUND | GROUPS.OBJECT,
-    });
-
-    body.addShape(new CANNON.Box(new CANNON.Vec3(hx, hy, hz)));
-    body.position.set(0, hy + 0.01, 0); // start just above ground
-    world.addBody(body);
+export function createRigidBody(mesh, shape, mass, pos, quat) {
+    const transform = new Ammo.btTransform();
+    transform.setIdentity();
+    transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+    transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
+    
+    const motionState = new Ammo.btDefaultMotionState(transform);
+    const localInertia = new Ammo.btVector3(0, 0, 0);
+    if (mass > 0) shape.calculateLocalInertia(mass, localInertia);
+    
+    const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
+    const body = new Ammo.btRigidBody(rbInfo);
+    
+    body.setFriction(0.5);
+    body.setRestitution(0.2);
+    
+    if (mass > 0) {
+        body.setActivationState(4); // DISABLE_DEACTIVATION
+    }
+    
     return body;
 }
 
-// ----- makeLampBody (Or any object i choose)--------------------------------------------------------
+export function makeMapBody(physicsWorld, visualMesh) {
+    const mesh = visualMesh.children[0]; // Assuming first child is the main mesh
+    if (!mesh || !mesh.geometry) return null;
 
-export function makeLampBody(world, x, y, z, halfWidth, halfHeight, mass = 0) {
-    const body = new CANNON.Body({
-        mass,
-        linearDamping:  0.4,
-        angularDamping: 0.6,
-        collisionFilterGroup: GROUPS.OBJECT,
-        collisionFilterMask:  GROUPS.CAR | GROUPS.GROUND | GROUPS.OBJECT,
-    });
+    const geometry = mesh.geometry;
+    const vertices = geometry.attributes.position.array;
+    const indices = geometry.index.array;
+    
+    const ammoMesh = new Ammo.btTriangleMesh();
+    const scale = visualMesh.scale;
+    const offset = visualMesh.position;
 
-    body.addShape(
-        new CANNON.Box(new CANNON.Vec3(halfWidth, halfHeight, halfWidth)),
-        new CANNON.Vec3(0, halfHeight, 0),
-    );
+    for (let i = 0; i < indices.length; i += 3) {
+        const i1 = indices[i] * 3;
+        const i2 = indices[i + 1] * 3;
+        const i3 = indices[i + 2] * 3;
 
-    body.position.set(x, 0.01, z); // 0.01 prevents immediate ground overlap
-    body.allowSleep = true;
-    world.addBody(body);
+        const v1 = new Ammo.btVector3(vertices[i1] * scale.x + offset.x, vertices[i1 + 1] * scale.y + offset.y, vertices[i1 + 2] * scale.z + offset.z);
+        const v2 = new Ammo.btVector3(vertices[i2] * scale.x + offset.x, vertices[i2 + 1] * scale.y + offset.y, vertices[i2 + 2] * scale.z + offset.z);
+        const v3 = new Ammo.btVector3(vertices[i3] * scale.x + offset.x, vertices[i3 + 1] * scale.y + offset.y, vertices[i3 + 2] * scale.z + offset.z);
+
+        ammoMesh.addTriangle(v1, v2, v3, true);
+    }
+
+    const shape = new Ammo.btBvhTriangleMeshShape(ammoMesh, true, true);
+    const transform = new Ammo.btTransform();
+    transform.setIdentity();
+    
+    const motionState = new Ammo.btDefaultMotionState(transform);
+    const rbInfo = new Ammo.btRigidBodyConstructionInfo(0, motionState, shape, new Ammo.btVector3(0, 0, 0));
+    const body = new Ammo.btRigidBody(rbInfo);
+    
+    physicsWorld.addRigidBody(body);
     return body;
 }
 
-// ----- syncMeshToBody -----------------------------------------
-
-const _lc = new THREE.Vector3();
-const _bq = new THREE.Quaternion();
-export function syncMeshToBody(body, mesh, meshCentreOffset = 0) {
-    _bq.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
-
-    if (meshCentreOffset !== 0) {
-        _lc.set(0, meshCentreOffset, 0).applyQuaternion(_bq);
-        mesh.position.set(
-            body.position.x + _lc.x,
-            body.position.y + _lc.y,
-            body.position.z + _lc.z,
-        );
-    } else {
-        mesh.position.set(body.position.x, body.position.y, body.position.z);
-    }
-
-    mesh.quaternion.copy(_bq);
-}
-
-// ---- makeMapBody -----------------------------------------------------
-
-export function makeMapBody(world, gltfScene) {
-    gltfScene.updateMatrixWorld(true);
-
-    const allVertices = [];
-    const allIndices  = [];
-    const tempVec     = new THREE.Vector3();
-
-    gltfScene.traverse((child) => {
-        if (!child.isMesh) return;
-        const geo = child.geometry;
-        if (!geo?.attributes?.position) return;
-
-        const posAttr    = geo.attributes.position;
-        const vertOffset = allVertices.length / 3; 
-
-        // World transform each vertex
-        for (let i = 0; i < posAttr.count; i++) {
-            tempVec.fromBufferAttribute(posAttr, i).applyMatrix4(child.matrixWorld);
-            allVertices.push(tempVec.x, tempVec.y, tempVec.z);
+// Helpers for syncing
+export function syncMeshToBody(body, mesh, visualOffset = { x: 0, y: 0, z: 0 }) {
+    const ms = body.getMotionState();
+    if (ms) {
+        const TRANSFORM_AUX = new Ammo.btTransform();
+        ms.getWorldTransform(TRANSFORM_AUX);
+        const p = TRANSFORM_AUX.getOrigin();
+        const q = TRANSFORM_AUX.getRotation();
+        
+        mesh.position.set(p.x(), p.y(), p.z());
+        mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+        
+        if (visualOffset.x !== 0 || visualOffset.y !== 0 || visualOffset.z !== 0) {
+            const offset = new THREE.Vector3(visualOffset.x, visualOffset.y, visualOffset.z);
+            offset.applyQuaternion(mesh.quaternion);
+            mesh.position.add(offset);
         }
-
-        if (geo.index) {
-            for (let i = 0; i < geo.index.count; i++) {
-                allIndices.push(geo.index.array[i] + vertOffset);
-            }
-        } else {
-            for (let i = 0; i < posAttr.count; i++) {
-                allIndices.push(i + vertOffset);
-            }
-        }
-    });
-
-    if (allVertices.length === 0) {
-        console.warn('[physics] makeMapBody: no mesh geometry found in GLTF scene');
-        return null;
-    }
-
-    const body = new CANNON.Body({
-        type: CANNON.Body.STATIC,
-        collisionFilterGroup: GROUPS.MAP,
-        collisionFilterMask:  GROUPS.CAR | GROUPS.OBJECT,
-    });
-
-    body.addShape(new CANNON.Trimesh(
-        new Float32Array(allVertices),
-        new Int32Array(allIndices),
-    ));
-
-    body.position.set(0, 0, 0);
-    body.quaternion.set(0, 0, 0, 1);
-    world.addBody(body);
-
-    console.log(`[physics] Map body: ${allVertices.length / 3} vertices, ${allIndices.length / 3} triangles`);
-    return body;
-}
-
-// ---- CANNON DEBUGGER -----------------------------------------------------
-
-export class CannonDebugger {
-    constructor(scene, world, { color = 0x00ff00, visible = true } = {}) {
-        this.scene   = scene;
-        this.world   = world;
-        this.visible = visible;
-        this._meshes = [];
-        this._mat    = new THREE.MeshBasicMaterial({ color, wireframe: true });
-    }
-
-    update() {
-        const bodies = this.world.bodies;
-
-        // Add a wireframe mesh for any newly added objects
-        while (this._meshes.length < bodies.length) {
-            const m = new THREE.Mesh(new THREE.BufferGeometry(), this._mat);
-            m.visible = this.visible;
-            this.scene.add(m);
-            this._meshes.push(m);
-        }
-
-        for (let i = 0; i < bodies.length; i++) {
-            const body = bodies[i];
-            const dm   = this._meshes[i];
-
-            if (!body.shapes.length) { dm.visible = false; continue; }
-
-            const shape  = body.shapes[0];
-            const offset = body.shapeOffsets[0] ?? new CANNON.Vec3();
-
-            // Geomtry matches body shape
-            dm.geometry.dispose();
-            if (shape instanceof CANNON.Box) {
-                const h = shape.halfExtents;
-                dm.geometry = new THREE.BoxGeometry(h.x * 2, h.y * 2, h.z * 2);
-            } else if (shape instanceof CANNON.Sphere) {
-                dm.geometry = new THREE.SphereGeometry(shape.radius, 8, 6);
-            } else if (shape instanceof CANNON.Plane) {
-                dm.geometry = new THREE.PlaneGeometry(50, 50);
-            } else {
-                dm.geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1); // unknown shape fallback
-            }
-
-            // Body Position
-            const bq = new THREE.Quaternion(
-                body.quaternion.x, body.quaternion.y,
-                body.quaternion.z, body.quaternion.w,
-            );
-            const off = new THREE.Vector3(offset.x, offset.y, offset.z).applyQuaternion(bq);
-            dm.position.set(
-                body.position.x + off.x,
-                body.position.y + off.y,
-                body.position.z + off.z,
-            );
-            dm.quaternion.copy(bq);
-            dm.visible = this.visible;
-        }
-
-        for (let i = bodies.length; i < this._meshes.length; i++) {
-            this._meshes[i].visible = false;
-        }
-    }
-
-    dispose() {
-        for (const m of this._meshes) { this.scene.remove(m); m.geometry.dispose(); }
-        this._meshes = [];
-        this._mat.dispose();
     }
 }
