@@ -152,10 +152,17 @@ const timer = new THREE.Timer();
 
 function initPhysics() {
     const { world } = createPhysicsWorld({ gravity: -9.82, iterations: 10 });
-    physicsWorld = world;    // 1. Chassis Body - Use a Sphere for better trimesh interaction
+    physicsWorld = world;
+
+    // 1. Chassis Body - Use a Sphere for better trimesh interaction
     const chassisShape = new CANNON.Sphere(0.6);
-    carPhysicsBody = new CANNON.Body({
+    const chassisMaterial = new CANNON.Material('chassis');
+    chassisMaterial.friction = 0.0;
+    chassisMaterial.restitution = 0.0;
+
+    carPhysicsBody = new CANNON.Body({ 
         mass: CHASSIS_MASS,
+        material: chassisMaterial,
         collisionFilterGroup: GROUPS.CAR,
         collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
     });
