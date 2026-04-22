@@ -45,28 +45,54 @@ export function createRigidBody(mesh, shape, mass, pos, quat) {
 }
 
 export function makeMapBody(physicsWorld, visualMesh) {
-    const mesh = visualMesh.children[0]; // Assuming first child is the main mesh
-    if (!mesh || !mesh.geometry) return null;
-
-    const geometry = mesh.geometry;
-    const vertices = geometry.attributes.position.array;
-    const indices = geometry.index.array;
-    
     const ammoMesh = new Ammo.btTriangleMesh();
     const scale = visualMesh.scale;
     const offset = visualMesh.position;
 
-    for (let i = 0; i < indices.length; i += 3) {
-        const i1 = indices[i] * 3;
-        const i2 = indices[i + 1] * 3;
-        const i3 = indices[i + 2] * 3;
+    visualMesh.updateMatrixWorld(true);
 
-        const v1 = new Ammo.btVector3(vertices[i1] * scale.x + offset.x, vertices[i1 + 1] * scale.y + offset.y, vertices[i1 + 2] * scale.z + offset.z);
-        const v2 = new Ammo.btVector3(vertices[i2] * scale.x + offset.x, vertices[i2 + 1] * scale.y + offset.y, vertices[i2 + 2] * scale.z + offset.z);
-        const v3 = new Ammo.btVector3(vertices[i3] * scale.x + offset.x, vertices[i3 + 1] * scale.y + offset.y, vertices[i3 + 2] * scale.z + offset.z);
+    visualMesh.traverse((node) => {
+        if (node.isMesh && node.geometry) {
+            const geometry = node.geometry.index ? node.geometry : node.geometry.toNonIndexed();
+            const vertices = geometry.attributes.position.array;
+            const indices = geometry.index ? geometry.index.array : null;
+            const worldMatrix = node.matrixWorld;
 
-        ammoMesh.addTriangle(v1, v2, v3, true);
-    }
+            const tempV1 = new THREE.Vector3();
+            const tempV2 = new THREE.Vector3();
+            const tempV3 = new THREE.Vector3();
+
+            if (indices) {
+                for (let i = 0; i < indices.length; i += 3) {
+                    const i1 = indices[i] * 3;
+                    const i2 = indices[i + 1] * 3;
+                    const i3 = indices[i + 2] * 3;
+
+                    tempV1.set(vertices[i1], vertices[i1 + 1], vertices[i1 + 2]).applyMatrix4(worldMatrix);
+                    tempV2.set(vertices[i2], vertices[i2 + 1], vertices[i2 + 2]).applyMatrix4(worldMatrix);
+                    tempV3.set(vertices[i3], vertices[i3 + 1], vertices[i3 + 2]).applyMatrix4(worldMatrix);
+
+                    const v1 = new Ammo.btVector3(tempV1.x, tempV1.y, tempV1.z);
+                    const v2 = new Ammo.btVector3(tempV2.x, tempV2.y, tempV2.z);
+                    const v3 = new Ammo.btVector3(tempV3.x, tempV3.y, tempV3.z);
+                    ammoMesh.addTriangle(v1, v2, v3, true);
+                    Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
+                }
+            } else {
+                for (let i = 0; i < vertices.length; i += 9) {
+                    tempV1.set(vertices[i], vertices[i + 1], vertices[i + 2]).applyMatrix4(worldMatrix);
+                    tempV2.set(vertices[i + 3], vertices[i + 4], vertices[i + 5]).applyMatrix4(worldMatrix);
+                    tempV3.set(vertices[i + 6], vertices[i + 7], vertices[i + 8]).applyMatrix4(worldMatrix);
+
+                    const v1 = new Ammo.btVector3(tempV1.x, tempV1.y, tempV1.z);
+                    const v2 = new Ammo.btVector3(tempV2.x, tempV2.y, tempV2.z);
+                    const v3 = new Ammo.btVector3(tempV3.x, tempV3.y, tempV3.z);
+                    ammoMesh.addTriangle(v1, v2, v3, true);
+                    Ammo.destroy(v1); Ammo.destroy(v2); Ammo.destroy(v3);
+                }
+            }
+        }
+    });
 
     const shape = new Ammo.btBvhTriangleMeshShape(ammoMesh, true, true);
     const transform = new Ammo.btTransform();
