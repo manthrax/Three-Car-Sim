@@ -154,7 +154,11 @@ function initPhysics() {
 
     // 1. Chassis Body
     const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.4, 0.55));
-    carPhysicsBody = new CANNON.Body({ mass: CHASSIS_MASS });
+    carPhysicsBody = new CANNON.Body({ 
+        mass: CHASSIS_MASS,
+        collisionFilterGroup: GROUPS.CAR,
+        collisionFilterMask: GROUPS.GROUND | GROUPS.OBJECT | GROUPS.MAP,
+    });
     // Offset center of mass downwards to prevent flipping
     carPhysicsBody.addShape(chassisShape, new CANNON.Vec3(0, 0, 0));
     carPhysicsBody.position.set(0, 2, 0);
@@ -164,7 +168,7 @@ function initPhysics() {
     // 2. Vehicle
     vehicle = new CANNON.RaycastVehicle({
         chassisBody: carPhysicsBody,
-        indexForwardAxis: 0, // X is forward in your current model orientation
+        indexForwardAxis: 0, // X is forward
         indexRightAxis: 2,   // Z is right
         indexUpAxis: 1,      // Y is up
     });
@@ -174,7 +178,7 @@ function initPhysics() {
         radius: WHEEL_RADIUS,
         directionLocal: new CANNON.Vec3(0, -1, 0),
         suspensionStiffness: 30,
-        suspensionRestLength: 0.35,
+        suspensionRestLength: 0.4,
         frictionSlip: 1.4,
         dampingRelaxation: 2.3,
         dampingCompression: 4.4,
@@ -185,19 +189,21 @@ function initPhysics() {
         isFrontWheel: true,
     };
 
-    // Add 4 wheels
+    // Add 4 wheels - Move connection points down (-0.3) so wheels are below chassis
+    const downOffset = -0.3;
     // Front Right
-    wheelOptions.chassisConnectionPointLocal.set(1.0, 0, 0.6);
+    wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, 0.6);
     vehicle.addWheel(wheelOptions);
     // Front Left
-    wheelOptions.chassisConnectionPointLocal.set(1.0, 0, -0.6);
+    wheelOptions.chassisConnectionPointLocal.set(1.0, downOffset, -0.6);
     vehicle.addWheel(wheelOptions);
     // Rear Right
     wheelOptions.isFrontWheel = false;
-    wheelOptions.chassisConnectionPointLocal.set(-0.8, 0, 0.6);
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, 0.6);
     vehicle.addWheel(wheelOptions);
     // Rear Left
-    wheelOptions.chassisConnectionPointLocal.set(-0.8, 0, -0.6);
+    wheelOptions.isFrontWheel = false;
+    wheelOptions.chassisConnectionPointLocal.set(-0.8, downOffset, -0.6);
     vehicle.addWheel(wheelOptions);
 
     vehicle.addToWorld(physicsWorld);
@@ -409,7 +415,7 @@ function drawCar(scene, manager) {
             mesh.position.set(0, 0, 0);
 
             pivot.add(mesh);
-            car.add(pivot);
+            scene.add(pivot); // Add to scene directly, sync handles position
 
             wheelPivots.push(pivot);
             wheelMeshes.push(mesh);
